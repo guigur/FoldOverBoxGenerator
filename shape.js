@@ -4,7 +4,7 @@ const tabLength = 5
 // Settings in MM
 const handleHeight = 15
 var width = 100
-var length = 100+thickness*2
+var length = 100
 var height = 100
 
 
@@ -13,29 +13,35 @@ var height = 100
 const form = document.querySelector('form');
 form.reset(); 
 
-
-form.addEventListener('submit', (event) => {
-    event.preventDefault(); // Prevent the form from submitting normally
-    
+function syncDimensionsFromForm() {
     thickness = parseFloat(document.getElementById('thickness').value)
     length = parseFloat(document.getElementById('length').value)
     width = parseFloat(document.getElementById('width').value)
     height = parseFloat(document.getElementById('height').value)
 
-    length = clamp(length,30,1000)
-    width = clamp(width,30,1000)
-    height = clamp(height,50,1000)
+    thickness = clamp(thickness, 0.1, 50)
+    length = clamp(length, 30, 1000)
+    width = clamp(width, 30, 1000)
+    height = clamp(height, 50, 1000)
 
     document.getElementById('thickness').value = thickness
     document.getElementById('length').value = length
     document.getElementById('width').value = width
     document.getElementById('height').value = height
 
+    const topClearance = getTopClearance()
+    myCanvas.width = height*2+thickness*2+length+height*2+thickness*2
+    myCanvas.height = height*2+width*3+topClearance+40 // Evita retallar la part superior de la tapa
+    view.viewSize = new Size(myCanvas.width, myCanvas.height)
+}
 
-    document.getElementById('myCanvas').width = height*2+thickness*2+length+height*2+thickness*2
-    document.getElementById('myCanvas').height = height+height+width
+
+form.addEventListener('submit', (event) => {
+    event.preventDefault(); // Prevent the form from submitting normally
+
+    syncDimensionsFromForm()
     // console.log(event.submitter.value)
-    if(event.submitter.value == "Export"){
+    if(event.submitter && event.submitter.value == "Export"){
         start()
         window.process()
     }
@@ -46,12 +52,14 @@ form.addEventListener('submit', (event) => {
 
 
 // form.dispatchEvent("submit")
+syncDimensionsFromForm()
 start()
 function start(){
 
 project.clear()
 // Logic
-const offset = new Point(height*2+thickness*2,height)
+const topClearance = getTopClearance()
+const offset = new Point(height*2+thickness*2,height+width+topClearance) // Més espai per la tapa superior
 const LRSizes = new Size(height,width)
 const TBSizes = new Size(length-thickness*2,height)
 const TB_LRSizes = new Size(width/2,height-thickness)
@@ -152,28 +160,105 @@ base = base.unite(sideL1_5)
 base = base.unite(sideL2)
 base = base.unite(sideLTab1)
 base = base.unite(sideLTab2)
-base = base.subtract(handleL1)
-base = base.subtract(handleL2)
 base = base.unite(sideR)
 base = base.unite(sideR1_5)
 base = base.unite(sideR2)
 base = base.unite(sideRTab1)
 base = base.unite(sideRTab2)
-base = base.subtract(handleR1)
-base = base.subtract(handleR2)
 base = base.unite(sideT)
 base = base.unite(sideTR)
 base = base.unite(sideTL)
-base = base.subtract(handleTL)
-base = base.subtract(handleTR)
 base = base.unite(sideB)
 base = base.unite(sideBR)
 base = base.unite(sideBL)
-base = base.subtract(handleBL)
-base = base.subtract(handleBR)
-base.strokeColor = "#ff0000"
 
 handleTemp.remove()
+
+// Crear tapa tipus "mailer": panell superior + solapa de tancament + solapes laterals
+const lidWidth = length - thickness * 2
+const lidPanelHeight = width
+const lidOffset = offset + new Point(thickness, -height - lidPanelHeight)
+const flapDepth = getLidFlapDepth()
+
+// Panell principal de la tapa (enganxat al costat superior)
+var lidPanel = new Path.Rectangle(lidOffset, new Size(lidWidth, lidPanelHeight))
+
+// Solapa de tancament superior: ampla (fins a vores) i curta (25% de la tapa)
+const lockTabHeight = flapDepth
+const lockTabShoulder = Math.max(3, thickness * 1.2)
+
+var lidLockTab = new Path([
+    lidOffset + new Point(0, 0),
+    lidOffset + new Point(0, -lockTabShoulder),
+    lidOffset + new Point(lockTabShoulder, -lockTabHeight),
+    lidOffset + new Point(lidWidth - lockTabShoulder, -lockTabHeight),
+    lidOffset + new Point(lidWidth, -lockTabShoulder),
+    lidOffset + new Point(lidWidth, 0)
+])
+lidLockTab.closed = true
+
+// Solapes laterals: més llargues, en diagonal, arribant a les cantonades de la tapa
+const sideWingDepth = flapDepth
+const sideWingInset = clamp(flapDepth * 0.35, 4, lidPanelHeight * 0.35)
+
+var lidSideL = new Path([
+    lidOffset + new Point(0, 0),
+    lidOffset + new Point(-sideWingDepth, sideWingInset),
+    lidOffset + new Point(-sideWingDepth, lidPanelHeight - sideWingInset),
+    lidOffset + new Point(0, lidPanelHeight)
+])
+lidSideL.closed = true
+
+var lidSideR = new Path([
+    lidOffset + new Point(lidWidth, 0),
+    lidOffset + new Point(lidWidth + sideWingDepth, sideWingInset),
+    lidOffset + new Point(lidWidth + sideWingDepth, lidPanelHeight - sideWingInset),
+    lidOffset + new Point(lidWidth, lidPanelHeight)
+])
+lidSideR.closed = true
+
+// Unir tota la geometria de la tapa a la peça principal
+base = base.unite(lidPanel)
+base = base.unite(lidLockTab)
+base = base.unite(lidSideL)
+base = base.unite(lidSideR)
+
+base.strokeColor = "#ff0000"
+
+// Línia de plegat entre costat superior i panell de tapa
+var lidBaseFold = new Path.Line(
+    offset + new Point(thickness, -height),
+    offset + new Point(length - thickness, -height)
+)
+var lidBaseFoldD = dashPath(lidBaseFold)
+lidBaseFoldD.strokeColor = "#ff0000"
+lidBaseFold.remove()
+
+// Línia de plegat entre panell de tapa i solapa de tancament
+var lidTabFold = new Path.Line(
+    lidOffset + new Point(0, 0),
+    lidOffset + new Point(lidWidth, 0)
+)
+var lidTabFoldD = dashPath(lidTabFold)
+lidTabFoldD.strokeColor = "#ff0000"
+lidTabFold.remove()
+
+// Línies de plegat de les solapes laterals
+var lidSideLFold = new Path.Line(
+    new Point(lidOffset.x, lidOffset.y),
+    new Point(lidOffset.x, lidOffset.y + lidPanelHeight)
+)
+var lidSideLFoldD = dashPath(lidSideLFold)
+lidSideLFoldD.strokeColor = "#ff0000"
+lidSideLFold.remove()
+
+var lidSideRFold = new Path.Line(
+    new Point(lidOffset.x + lidWidth, lidOffset.y),
+    new Point(lidOffset.x + lidWidth, lidOffset.y + lidPanelHeight)
+)
+var lidSideRFoldD = dashPath(lidSideRFold)
+lidSideRFoldD.strokeColor = "#ff0000"
+lidSideRFold.remove()
 
 var base2D = dashPath(base2)
 var sideL1_5D = dashPath(sideL1_5) 
@@ -239,6 +324,7 @@ function process()
     // myCanvas is an Id made in html doc
     myCanvas.width = project.activeLayer.bounds.width+100
     myCanvas.height = project.activeLayer.bounds.height+10
+    view.viewSize = new Size(myCanvas.width, myCanvas.height)
     
     
     
@@ -250,4 +336,13 @@ function process()
 
 function clamp(number, min, max) {
     return Math.max(min, Math.min(number, max));
+}
+
+function getLidFlapDepth() {
+    return Math.max(10, width * 0.25)
+}
+
+function getTopClearance() {
+    // La solapa superior puja "flapDepth" per sobre del panell de tapa.
+    return getLidFlapDepth() + 40
 }
