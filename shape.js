@@ -41,6 +41,14 @@ function syncDimensionsFromForm() {
     myCanvas.width = height*2+thickness*2+length+height*2+thickness*2
     myCanvas.height = height*2+width*3+topClearance+40 // Evita retallar la part superior de la tapa
     view.viewSize = new Size(myCanvas.width, myCanvas.height)
+    updateDisplayDimensions()
+}
+
+function updateDisplayDimensions() {
+    const widthEl = document.getElementById('patternWidth')
+    const heightEl = document.getElementById('patternHeight')
+    if (widthEl) widthEl.textContent = Math.round(myCanvas.width)
+    if (heightEl) heightEl.textContent = Math.round(myCanvas.height)
 }
 
 
