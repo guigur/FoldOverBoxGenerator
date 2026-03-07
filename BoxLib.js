@@ -125,7 +125,7 @@ window.booleanCompound = function( Cpath /*CompoundPath*/, path /*Path*/, operat
 // new functions go here v----v
 
 
-function process()
+function process(fileName)
 {
 
     project.activeLayer.scale(3.779528)
@@ -140,7 +140,7 @@ function process()
     
     
    
-    downloadAsSVG()
+    downloadAsSVG(fileName)
     // console.log(project.exportSVG())
     // rect.strokeColor = "#000000"
 }

@@ -51,7 +51,7 @@ form.addEventListener('submit', (event) => {
     // console.log(event.submitter.value)
     if(event.submitter && event.submitter.value == "Export"){
         start()
-        window.process()
+        window.process(getExportFileName())
     }
     start()
 });
@@ -425,4 +425,20 @@ function getTopClearance() {
 
 function hasLid() {
     return boxType === "lid"
+}
+
+function formatDimensionForFile(value) {
+    const rounded = Math.round(value * 100) / 100
+    if (Number.isInteger(rounded)) {
+        return String(rounded)
+    }
+    return String(rounded).replace('.', '_')
+}
+
+function getExportFileName() {
+    const boxSuffix = hasLid() ? "tapa" : "normal"
+    const l = formatDimensionForFile(length)
+    const w = formatDimensionForFile(width)
+    const h = formatDimensionForFile(height)
+    return l + "x" + w + "x" + h + boxSuffix + ".svg"
 }
