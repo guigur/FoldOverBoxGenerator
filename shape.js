@@ -6,6 +6,7 @@ const handleHeight = 15
 var width = 100
 var length = 100
 var height = 100
+var boxType = "lid"
 
 
 
@@ -18,6 +19,10 @@ function syncDimensionsFromForm() {
     length = parseFloat(document.getElementById('length').value)
     width = parseFloat(document.getElementById('width').value)
     height = parseFloat(document.getElementById('height').value)
+    const boxTypeInput = document.getElementById('boxType')
+    if (boxTypeInput) {
+        boxType = boxTypeInput.value
+    }
 
     thickness = clamp(thickness, 0.1, 50)
     length = clamp(length, 30, 1000)
@@ -28,6 +33,9 @@ function syncDimensionsFromForm() {
     document.getElementById('length').value = length
     document.getElementById('width').value = width
     document.getElementById('height').value = height
+    if (boxTypeInput) {
+        boxTypeInput.value = boxType
+    }
 
     const topClearance = getTopClearance()
     myCanvas.width = height*2+thickness*2+length+height*2+thickness*2
@@ -172,127 +180,177 @@ base = base.unite(sideB)
 base = base.unite(sideBR)
 base = base.unite(sideBL)
 
+// Els forats de mànec només existeixen al model original (sense tapa)
+if (!hasLid()) {
+    base = base.subtract(handleL1)
+    base = base.subtract(handleL2)
+    base = base.subtract(handleR1)
+    base = base.subtract(handleR2)
+    base = base.subtract(handleTL)
+    base = base.subtract(handleTR)
+    base = base.subtract(handleBL)
+    base = base.subtract(handleBR)
+}
+
+handleL1.remove()
+handleL2.remove()
+handleR1.remove()
+handleR2.remove()
+handleTL.remove()
+handleTR.remove()
+handleBL.remove()
+handleBR.remove()
 handleTemp.remove()
+handleTemp2.remove()
 
-// Crear tapa tipus "mailer": panell superior + solapa de tancament + solapes laterals
-const lidWidth = length - thickness * 2
-const lidPanelHeight = width
-const lidOffset = offset + new Point(thickness, -height - lidPanelHeight)
-const flapDepth = getLidFlapDepth()
+if (hasLid()) {
+    // Crear tapa tipus "mailer": panell superior + solapa de tancament + solapes laterals
+    const lidWidth = length - thickness * 2
+    const lidPanelHeight = width
+    const lidOffset = offset + new Point(thickness, -height - lidPanelHeight)
+    const flapDepth = getLidFlapDepth()
 
-// Panell principal de la tapa (enganxat al costat superior)
-var lidPanel = new Path.Rectangle(lidOffset, new Size(lidWidth, lidPanelHeight))
+    // Panell principal de la tapa (enganxat al costat superior)
+    var lidPanel = new Path.Rectangle(lidOffset, new Size(lidWidth, lidPanelHeight))
 
-// Solapa de tancament superior: ampla (fins a vores) i curta (25% de la tapa)
-const lockTabHeight = flapDepth
-const lockTabShoulder = Math.max(3, thickness * 1.2)
-const lockTabCornerRadius = Math.min(8, lockTabHeight * 0.35)
-const lockTabTopInset = Math.max(2, lockTabCornerRadius * 0.9)
+    // Solapa de tancament superior: ampla (fins a vores) i curta (25% de la tapa)
+    const lockTabHeight = flapDepth
+    const lockTabShoulder = Math.max(3, thickness * 1.2)
+    const lockTabCornerRadius = Math.min(8, lockTabHeight * 0.35)
+    const lockTabTopInset = Math.max(2, lockTabCornerRadius * 0.9)
 
-var lidLockTab = new Path([
-    lidOffset + new Point(0, 0),
-    lidOffset + new Point(0, -lockTabShoulder),
-    lidOffset + new Point(lockTabShoulder + lockTabTopInset, -lockTabHeight),
-    lidOffset + new Point(lidWidth - lockTabShoulder - lockTabTopInset, -lockTabHeight),
-    lidOffset + new Point(lidWidth, -lockTabShoulder),
-    lidOffset + new Point(lidWidth, 0)
-])
-lidLockTab.closed = true
-// Arrodonir només les cantonades superiors de la solapa de tancament
-lidLockTab.segments[2].handleIn = new Point(-lockTabCornerRadius, 0)
-lidLockTab.segments[2].handleOut = new Point(lockTabCornerRadius, 0)
-lidLockTab.segments[3].handleIn = new Point(-lockTabCornerRadius, 0)
-lidLockTab.segments[3].handleOut = new Point(lockTabCornerRadius, 0)
+    var lidLockTab = new Path([
+        lidOffset + new Point(0, 0),
+        lidOffset + new Point(0, -lockTabShoulder),
+        lidOffset + new Point(lockTabShoulder + lockTabTopInset, -lockTabHeight),
+        lidOffset + new Point(lidWidth - lockTabShoulder - lockTabTopInset, -lockTabHeight),
+        lidOffset + new Point(lidWidth, -lockTabShoulder),
+        lidOffset + new Point(lidWidth, 0)
+    ])
+    lidLockTab.closed = true
+    // Arrodonir només les cantonades superiors de la solapa de tancament
+    lidLockTab.segments[2].handleIn = new Point(-lockTabCornerRadius, 0)
+    lidLockTab.segments[2].handleOut = new Point(lockTabCornerRadius, 0)
+    lidLockTab.segments[3].handleIn = new Point(-lockTabCornerRadius, 0)
+    lidLockTab.segments[3].handleOut = new Point(lockTabCornerRadius, 0)
 
-// Solapes laterals: més llargues, en diagonal, arribant a les cantonades de la tapa
-const sideWingDepth = flapDepth
-const sideWingInset = clamp(flapDepth * 0.35, 4, lidPanelHeight * 0.35)
-const cornerRadius = Math.min(6, sideWingInset * 0.5)
+    // Solapes laterals: més llargues, en diagonal, arribant a les cantonades de la tapa
+    const sideWingDepth = flapDepth
+    const sideWingInset = clamp(flapDepth * 0.35, 4, lidPanelHeight * 0.35)
+    const cornerRadius = Math.min(6, sideWingInset * 0.5)
 
-var lidSideL = new Path([
-    lidOffset + new Point(0, 0),
-    lidOffset + new Point(-sideWingDepth, sideWingInset),
-    lidOffset + new Point(-sideWingDepth, lidPanelHeight - sideWingInset),
-    lidOffset + new Point(0, lidPanelHeight)
-])
-lidSideL.closed = true
-// Arrodonir només les cantonades externes (segments 1 i 2)
-lidSideL.segments[1].handleIn = new Point(0, -cornerRadius)
-lidSideL.segments[1].handleOut = new Point(0, cornerRadius)
-lidSideL.segments[2].handleIn = new Point(0, -cornerRadius)
-lidSideL.segments[2].handleOut = new Point(0, cornerRadius)
+    var lidSideL = new Path([
+        lidOffset + new Point(0, 0),
+        lidOffset + new Point(-sideWingDepth, sideWingInset),
+        lidOffset + new Point(-sideWingDepth, lidPanelHeight - sideWingInset),
+        lidOffset + new Point(0, lidPanelHeight)
+    ])
+    lidSideL.closed = true
+    // Arrodonir només les cantonades externes (segments 1 i 2)
+    lidSideL.segments[1].handleIn = new Point(0, -cornerRadius)
+    lidSideL.segments[1].handleOut = new Point(0, cornerRadius)
+    lidSideL.segments[2].handleIn = new Point(0, -cornerRadius)
+    lidSideL.segments[2].handleOut = new Point(0, cornerRadius)
 
-var lidSideR = new Path([
-    lidOffset + new Point(lidWidth, 0),
-    lidOffset + new Point(lidWidth + sideWingDepth, sideWingInset),
-    lidOffset + new Point(lidWidth + sideWingDepth, lidPanelHeight - sideWingInset),
-    lidOffset + new Point(lidWidth, lidPanelHeight)
-])
-lidSideR.closed = true
-// Arrodonir només les cantonades externes (segments 1 i 2)
-lidSideR.segments[1].handleIn = new Point(0, -cornerRadius)
-lidSideR.segments[1].handleOut = new Point(0, cornerRadius)
-lidSideR.segments[2].handleIn = new Point(0, -cornerRadius)
-lidSideR.segments[2].handleOut = new Point(0, cornerRadius)
+    var lidSideR = new Path([
+        lidOffset + new Point(lidWidth, 0),
+        lidOffset + new Point(lidWidth + sideWingDepth, sideWingInset),
+        lidOffset + new Point(lidWidth + sideWingDepth, lidPanelHeight - sideWingInset),
+        lidOffset + new Point(lidWidth, lidPanelHeight)
+    ])
+    lidSideR.closed = true
+    // Arrodonir només les cantonades externes (segments 1 i 2)
+    lidSideR.segments[1].handleIn = new Point(0, -cornerRadius)
+    lidSideR.segments[1].handleOut = new Point(0, cornerRadius)
+    lidSideR.segments[2].handleIn = new Point(0, -cornerRadius)
+    lidSideR.segments[2].handleOut = new Point(0, cornerRadius)
 
-// Unir tota la geometria de la tapa a la peça principal
-base = base.unite(lidPanel)
-base = base.unite(lidLockTab)
-base = base.unite(lidSideL)
-base = base.unite(lidSideR)
+    // Unir tota la geometria de la tapa a la peça principal
+    base = base.unite(lidPanel)
+    base = base.unite(lidLockTab)
+    base = base.unite(lidSideL)
+    base = base.unite(lidSideR)
+}
 
 base.strokeColor = "#ff0000"
 
-// Línia de plegat entre costat superior i panell de tapa
-var lidBaseFold = new Path.Line(
-    offset + new Point(thickness, -height),
-    offset + new Point(length - thickness, -height)
-)
-var lidBaseFoldD = dashPath(lidBaseFold)
-lidBaseFoldD.strokeColor = "#ff0000"
-lidBaseFold.remove()
+if (hasLid()) {
+    const lidWidth = length - thickness * 2
+    const lidPanelHeight = width
+    const lidOffset = offset + new Point(thickness, -height - lidPanelHeight)
 
-// Línia de plegat entre panell de tapa i solapa de tancament
-var lidTabFold = new Path.Line(
-    lidOffset + new Point(0, 0),
-    lidOffset + new Point(lidWidth, 0)
-)
-var lidTabFoldD = dashPath(lidTabFold)
-lidTabFoldD.strokeColor = "#ff0000"
-lidTabFold.remove()
+    // Línia de plegat entre costat superior i panell de tapa
+    var lidBaseFold = new Path.Line(
+        offset + new Point(thickness, -height),
+        offset + new Point(length - thickness, -height)
+    )
+    var lidBaseFoldD = dashPath(lidBaseFold)
+    lidBaseFoldD.strokeColor = "#ff0000"
+    lidBaseFold.remove()
 
-// Línies de plegat de les solapes laterals
-var lidSideLFold = new Path.Line(
-    new Point(lidOffset.x, lidOffset.y),
-    new Point(lidOffset.x, lidOffset.y + lidPanelHeight)
-)
-var lidSideLFoldD = dashPath(lidSideLFold)
-lidSideLFoldD.strokeColor = "#ff0000"
-lidSideLFold.remove()
+    // Línia de plegat entre panell de tapa i solapa de tancament
+    var lidTabFold = new Path.Line(
+        lidOffset + new Point(0, 0),
+        lidOffset + new Point(lidWidth, 0)
+    )
+    var lidTabFoldD = dashPath(lidTabFold)
+    lidTabFoldD.strokeColor = "#ff0000"
+    lidTabFold.remove()
 
-var lidSideRFold = new Path.Line(
-    new Point(lidOffset.x + lidWidth, lidOffset.y),
-    new Point(lidOffset.x + lidWidth, lidOffset.y + lidPanelHeight)
-)
-var lidSideRFoldD = dashPath(lidSideRFold)
-lidSideRFoldD.strokeColor = "#ff0000"
-lidSideRFold.remove()
+    // Línies de plegat de les solapes laterals
+    var lidSideLFold = new Path.Line(
+        new Point(lidOffset.x, lidOffset.y),
+        new Point(lidOffset.x, lidOffset.y + lidPanelHeight)
+    )
+    var lidSideLFoldD = dashPath(lidSideLFold)
+    lidSideLFoldD.strokeColor = "#ff0000"
+    lidSideLFold.remove()
+
+    var lidSideRFold = new Path.Line(
+        new Point(lidOffset.x + lidWidth, lidOffset.y),
+        new Point(lidOffset.x + lidWidth, lidOffset.y + lidPanelHeight)
+    )
+    var lidSideRFoldD = dashPath(lidSideRFold)
+    lidSideRFoldD.strokeColor = "#ff0000"
+    lidSideRFold.remove()
+}
 
 var base2D = dashPath(base2)
 var sideL1_5D = dashPath(sideL1_5) 
 var sideR1_5D = dashPath(sideR1_5)
-var sideTLD = dashPath(sideTL)
-var sideTRD = dashPath(sideTR)
-var sideBLD = dashPath(sideBL)
-var sideBRD = dashPath(sideBR)
+// Pestanyes interiors: dibuixar només la línia de plegat d'unió
+var sideTLFold = new Path.Line(
+    new Point(sideTL.bounds.right, sideTL.bounds.top),
+    new Point(sideTL.bounds.right, sideTL.bounds.bottom)
+)
+var sideTRFold = new Path.Line(
+    new Point(sideTR.bounds.left, sideTR.bounds.top),
+    new Point(sideTR.bounds.left, sideTR.bounds.bottom)
+)
+var sideBLFold = new Path.Line(
+    new Point(sideBL.bounds.right, sideBL.bounds.top),
+    new Point(sideBL.bounds.right, sideBL.bounds.bottom)
+)
+var sideBRFold = new Path.Line(
+    new Point(sideBR.bounds.left, sideBR.bounds.top),
+    new Point(sideBR.bounds.left, sideBR.bounds.bottom)
+)
+var sideTLFoldD = dashPath(sideTLFold)
+var sideTRFoldD = dashPath(sideTRFold)
+var sideBLFoldD = dashPath(sideBLFold)
+var sideBRFoldD = dashPath(sideBRFold)
+sideTLFold.remove()
+sideTRFold.remove()
+sideBLFold.remove()
+sideBRFold.remove()
 
 base2D.strokeColor = "#ff0000"
 sideL1_5D.strokeColor = "#ff0000"
 sideR1_5D.strokeColor = "#ff0000"
-sideTLD.strokeColor = "#ff0000"
-sideTRD.strokeColor = "#ff0000"
-sideBLD.strokeColor = "#ff0000"
-sideBRD.strokeColor = "#ff0000"
+sideTLFoldD.strokeColor = "#ff0000"
+sideTRFoldD.strokeColor = "#ff0000"
+sideBLFoldD.strokeColor = "#ff0000"
+sideBRFoldD.strokeColor = "#ff0000"
 }
 // process()
 
@@ -361,6 +419,10 @@ function getLidFlapDepth() {
 }
 
 function getTopClearance() {
-    // La solapa superior puja "flapDepth" per sobre del panell de tapa.
-    return getLidFlapDepth() + 40
+    // Deixa espai extra només quan la tapa està activa.
+    return hasLid() ? getLidFlapDepth() + 40 : 0
+}
+
+function hasLid() {
+    return boxType === "lid"
 }
