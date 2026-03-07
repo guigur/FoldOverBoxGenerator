@@ -186,20 +186,28 @@ var lidPanel = new Path.Rectangle(lidOffset, new Size(lidWidth, lidPanelHeight))
 // Solapa de tancament superior: ampla (fins a vores) i curta (25% de la tapa)
 const lockTabHeight = flapDepth
 const lockTabShoulder = Math.max(3, thickness * 1.2)
+const lockTabCornerRadius = Math.min(8, lockTabHeight * 0.35)
+const lockTabTopInset = Math.max(2, lockTabCornerRadius * 0.9)
 
 var lidLockTab = new Path([
     lidOffset + new Point(0, 0),
     lidOffset + new Point(0, -lockTabShoulder),
-    lidOffset + new Point(lockTabShoulder, -lockTabHeight),
-    lidOffset + new Point(lidWidth - lockTabShoulder, -lockTabHeight),
+    lidOffset + new Point(lockTabShoulder + lockTabTopInset, -lockTabHeight),
+    lidOffset + new Point(lidWidth - lockTabShoulder - lockTabTopInset, -lockTabHeight),
     lidOffset + new Point(lidWidth, -lockTabShoulder),
     lidOffset + new Point(lidWidth, 0)
 ])
 lidLockTab.closed = true
+// Arrodonir només les cantonades superiors de la solapa de tancament
+lidLockTab.segments[2].handleIn = new Point(-lockTabCornerRadius, 0)
+lidLockTab.segments[2].handleOut = new Point(lockTabCornerRadius, 0)
+lidLockTab.segments[3].handleIn = new Point(-lockTabCornerRadius, 0)
+lidLockTab.segments[3].handleOut = new Point(lockTabCornerRadius, 0)
 
 // Solapes laterals: més llargues, en diagonal, arribant a les cantonades de la tapa
 const sideWingDepth = flapDepth
 const sideWingInset = clamp(flapDepth * 0.35, 4, lidPanelHeight * 0.35)
+const cornerRadius = Math.min(6, sideWingInset * 0.5)
 
 var lidSideL = new Path([
     lidOffset + new Point(0, 0),
@@ -208,6 +216,11 @@ var lidSideL = new Path([
     lidOffset + new Point(0, lidPanelHeight)
 ])
 lidSideL.closed = true
+// Arrodonir només les cantonades externes (segments 1 i 2)
+lidSideL.segments[1].handleIn = new Point(0, -cornerRadius)
+lidSideL.segments[1].handleOut = new Point(0, cornerRadius)
+lidSideL.segments[2].handleIn = new Point(0, -cornerRadius)
+lidSideL.segments[2].handleOut = new Point(0, cornerRadius)
 
 var lidSideR = new Path([
     lidOffset + new Point(lidWidth, 0),
@@ -216,6 +229,11 @@ var lidSideR = new Path([
     lidOffset + new Point(lidWidth, lidPanelHeight)
 ])
 lidSideR.closed = true
+// Arrodonir només les cantonades externes (segments 1 i 2)
+lidSideR.segments[1].handleIn = new Point(0, -cornerRadius)
+lidSideR.segments[1].handleOut = new Point(0, cornerRadius)
+lidSideR.segments[2].handleIn = new Point(0, -cornerRadius)
+lidSideR.segments[2].handleOut = new Point(0, cornerRadius)
 
 // Unir tota la geometria de la tapa a la peça principal
 base = base.unite(lidPanel)
