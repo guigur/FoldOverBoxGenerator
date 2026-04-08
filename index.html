@@ -30,18 +30,18 @@
       <input type="text" id="width" name="fname" value="100"><br>
       <label for="height">Height (mm):</label><br>
       <input type="text" id="height" name="lname" value="100"><br><br>
-      <label for="boxType">Tipus de caixa:</label><br>
+      <label for="boxType">Type of box:</label><br>
       <select id="boxType" name="boxType">
-        <option value="lid" selected>Amb tapa</option>
-        <option value="open">Original (sense tapa)</option>
+        <option value="lid" selected>With lid</option>
+        <option value="open">Original (without lid)</option>
       </select><br><br>
       <input type="submit" value="Update">
       <input type="submit" value="Export">
     </form> 
     <div id="dimensions" style="margin-top: 20px; font-size: 16px; font-weight: bold;">
-      <p>Dimensions del patró:</p>
-      <p>Amplada: <span id="patternWidth">-</span> mm</p>
-      <p>Alçada: <span id="patternHeight">-</span> mm</p>
+      <p>Pattern dimensions::</p>
+      <p>Width: <span id="patternWidth">-</span> mm</p>
+      <p>Height: <span id="patternHeight">-</span> mm</p>
     </div>
     
     <canvas id="myCanvas" width="1200" height="500"></canvas>
